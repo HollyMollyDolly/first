@@ -1,0 +1,168 @@
+import config
+import telebot
+from telebot import types #Кнопки
+from string import Template
+
+
+config.token = "5943309880:AAGpzTBijygWI6lV5H2O8kj5snNW4rkqdVo"
+
+bot = telebot.TeleBot(config.token)
+
+HELP = """
+/help - Вывести список доступных команд.
+/reg - Зарегистрировать пользователя.
+/about - Показать пользователя. """
+
+user_dict = {606925025}
+
+class User:
+    def __init__(self, city):
+        self.city = city
+
+        keys = ['email', 'fullname', 'date', 'telephone', 'adress', 'inn']
+
+        for key in keys:
+            self.key = None
+
+# Если /help, /add, /show
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    itembtn1 = types.KeyboardButton('/help')
+    itembtn2 = types.KeyboardButton('/reg')
+    itembtn3 = types.KeyboardButton('/about')
+    markup.add(itembtn1, itembtn2, itembtn3)
+
+    bot.send_message(message.chat.id, "Здравствуйте! "
+    + message.from_user.first_name
+    + ", Я бот, что бы вы хотели узнать?", reply_markup=markup)
+
+#/about
+@bot.message_handler(commands=['about'])
+def send_about(message):
+    bot.send_message(message.chat.id, "Меня зовут Магда " + " помогу вам зарегестрировать аккаунт " + " на сайте Atomy. ")
+
+#/reg
+@bot.message_handler(commands=["reg"])
+def user_reg(message):
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
+    itembtn1 = types.KeyboardButton('Астана')
+    itembtn2 = types.KeyboardButton('Алматы')
+    itembtn3 = types.KeyboardButton('Шымкент')
+    itembtn4 = types.KeyboardButton('Актау')
+    itembtn5 = types.KeyboardButton('Актобе')
+    itembtn6 = types.KeyboardButton('Атырау')
+    itembtn7 = types.KeyboardButton('Тараз')
+    itembtn8 = types.KeyboardButton('Уральск')
+    itembtn9 = types.KeyboardButton('Павлодар')
+    markup.add(itembtn1, itembtn2, itembtn3, itembtn4, itembtn5, itembtn6, itembtn7, itembtn8, itembtn9)
+
+    msg = bot.send_message(message.chat.id, 'Ваш город? ', reply_markup=markup)
+    bot.register_next_step_handler(msg, process_city_step)
+
+def process_city_step(message):
+    try:
+        chat_id = message.chat.id
+        user_dict[chat_id] = User(message.text)
+
+        #удалить старую клавиатуру
+        markup = types.ReplyKeyboardRemove(selective=False)
+
+        msg = bot.send_message(chat_id, 'Email ', reply_markup=markup)
+        bot.register_next_step_handler(msg, process_email_step)
+
+    except:
+        bot.reply_to(message, 'Вы ввели неверный город ')
+
+def process_email_step(message):
+    try:
+        chat_id = message.chat.id
+        user = user_dict[chat_id]
+        user.email = message.text
+
+        msg = bot.send_message(chat_id, 'Фамилия имя Отчество ')
+        bot.register_next_step_handler(msg, process_fullname_step)
+
+    except:
+        bot.reply_to(message, 'ooops!! ')
+
+def process_fullname_step(message):
+    try:
+        input(message.text)
+
+        chat_id = message.chat.id
+        user = user_dict[chat_id]
+        user.fullname = message.text
+
+        msg = bot.send_message(chat_id, 'Дата рождения ')
+        bot.register_next_step_handler(msg, process_date_step)
+
+    except:
+        msg = bot.reply_to(message, 'Вы ввели что то другое. Пожалуйста введите правильное ФИО. ')
+        bot.register_next_step_handler(msg, process_fullname_step)
+
+def process_date_step(message):
+    try:
+        chat_id = message.chat.id
+        user = user_dict[chat_id]
+        user.date = message.text
+
+        msg = bot.send_message(chat_id, 'Ваш номер телефона ')
+        bot.register_next_step_handler(msg, process_telephone_step)
+
+    except:
+        bot.reply_to(message, 'ooops!! ')
+
+def process_telephone_step(message):
+    try:
+        chat_id = message.chat.id
+        user = user_dict[chat_id]
+        user.telephone = message.text
+
+        msg = bot.send_message(chat_id, 'Введите свой адрес проживания ')
+        bot.register_next_step_handler(msg, process_adress_step)
+
+    except:
+        bot.reply_to(message, 'ooops!! ')
+
+def process_adress_step(message):
+    try:
+        chat_id = message.chat.id
+        user = user_dict[chat_id]
+        user.adress = message.text
+
+        msg = bot.send_message(chat_id, 'Введите свой ИНН ')
+        bot.register_next_step_handler(msg, process_inn_step)
+
+    except:
+        bot.reply_to(message, 'ooops!! ')
+def process_inn_step(message):
+    try:
+        chat_id = message.chat.id
+        user = user_dict[chat_id]
+        user.inn = message.text
+
+        #Ваша Заявка "Имя пользователя"
+        bot.send_message(chat_id, getRegData(user, 'Ваша заявка', message.from_user.first_name), parse_mode="Markdown")
+
+    except:
+        bot.reply_to(message, 'ooops!! ')
+
+#формируем вид заявки регистрации
+#нельзя делать перенос строки Template
+#в send_message должно стоять parse_mode="Markdown"
+
+def getRegData(user, title, name):
+    t = Template('$title *$email* \n ФИО: *$fullname* \n Дата рождение: *$date* \n Телефон: *$telephone* \n Адрес проживание: *$adress* \n ИНН: *$inn* ')
+
+    return t.substitute({
+        'title': title,
+        'email': user.email,
+        'fullname': user.fullname,
+        'date': user.date,
+        'telephone': user.telephone,
+        'adress': user.adress,
+        'inn': user.inn,
+    })
+
+bot.polling(none_stop=True)
